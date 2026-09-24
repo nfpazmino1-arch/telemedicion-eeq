@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Telemedición EEQ</title>
+
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1769aa">
+
+    <!-- Librería para trabajar con Excel -->
+    <script src="xlsx.full.min.js"></script>
+</head>
+
+<body>
+
+    <div class="app">
+
+        <h1>⚡ Telemedición EEQ</h1>
+
+        <!-- CARGAR EXCEL -->
+        <div class="card">
+            <h2>Cargar ruta</h2>
+
+            <input 
+                type="file" 
+                id="excelFile" 
+                accept=".xlsx,.xls"
+            >
+
+            <p id="archivo">Ningún archivo cargado</p>
+        </div>
+
+
+        <!-- RESUMEN -->
+        <div class="card resumen">
+
+            <div>
+                <strong id="total">0</strong>
+                <span>Total</span>
+            </div>
+
+            <div>
+                <strong id="medidos">0</strong>
+                <span>Medidos</span>
+            </div>
+
+            <div>
+                <strong id="pendientes">0</strong>
+                <span>Pendientes</span>
+            </div>
+
+        </div>
+
+
+        <!-- PROGRESO -->
+        <div class="card">
+
+            <div class="barra">
+                <div id="progreso"></div>
+            </div>
+
+            <p id="porcentaje">0%</p>
+
+        </div>
+
+
+        <!-- BUSCADOR -->
+        <div class="card">
+
+            <h2>Buscar medidor</h2>
+
+            <input
+                type="text"
+                id="buscar"
+                placeholder="Digite 3 o más números..."
+                inputmode="numeric"
+            >
+
+            <div id="resultados"></div>
+
+        </div>
+
+
+        <!-- CLIENTE SELECCIONADO -->
+        <div id="clienteCard" class="card oculto">
+
+            <h2>Medidor seleccionado</h2>
+
+            <div id="datosCliente"></div>
+
+            <label for="lectura">Lectura</label>
+
+            <input
+                type="number"
+                id="lectura"
+                inputmode="numeric"
+            >
+
+            <button id="guardar">
+                💾 Guardar lectura
+            </button>
+
+            <button id="editar" class="editar oculto">
+                ✏️ Editar lectura
+            </button>
+
+        </div>
+
+
+        <!-- RESPALDO Y EXPORTACIÓN -->
+    <div class="card">
+
+    <button id="respaldo">
+        💾 Crear respaldo
+    </button>
+
+    <button id="exportar">
+        📊 Exportar Excel final
+    </button>
+
+    </div>
+
+    </div>
+
+    <script src="app.js"></script>
+
+</body>
+</html>

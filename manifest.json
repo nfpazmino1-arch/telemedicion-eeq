@@ -1,0 +1,11 @@
+{
+    "name": "Telemedición EEQ",
+    "short_name": "Telemedición",
+    "description": "Aplicación para toma de lecturas de medidores EEQ",
+    "start_url": "./",
+    "display": "standalone",
+    "background_color": "#f2f4f7",
+    "theme_color": "#1769aa",
+    "orientation": "portrait",
+    "icons": []
+}
