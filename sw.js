@@ -1,4 +1,4 @@
-const CACHE_NAME = "telemedicion-eeq-v2";
+const CACHE_NAME = "telemedicion-eeq-v4";
 
 const ARCHIVOS = [
     "./",
@@ -6,7 +6,9 @@ const ARCHIVOS = [
     "./style.css",
     "./app.js",
     "./manifest.json",
-    "./xlsx.full.min.js"
+    "./xlsx.full.min.js",
+    "./icon-192.png",
+    "./icon-512.png"
 ];
 
 
