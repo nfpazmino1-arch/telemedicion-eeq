@@ -1,12 +1,13 @@
 // ============================================
-// TELEMEDICIÓN EEQ
-// Sistema de lectura con guardado automático
+// TELEMEDICIÓN
+// Aplicación de lectura de medidores
 // ============================================
 
 let ruta = [];
 let lecturas = {};
 let medidorSeleccionado = null;
 let modoEdicion = false;
+
 let rutaKey = "";
 let nombreArchivoRuta = "";
 
@@ -37,6 +38,13 @@ const editar = document.getElementById("editar");
 
 const respaldo = document.getElementById("respaldo");
 const exportar = document.getElementById("exportar");
+
+
+// ============================================
+// CLAVES DE ALMACENAMIENTO
+// ============================================
+
+const CLAVE_RUTA = "telemedicion_ruta_actual";
 
 
 // ============================================
@@ -107,6 +115,17 @@ function buscarColumna(fila, nombre) {
 
 
 // ============================================
+// CREAR IDENTIFICADOR ÚNICO
+// ============================================
+
+function crearIdRegistro(indice) {
+
+    return "registro_" + indice;
+
+}
+
+
+// ============================================
 // CARGAR EXCEL
 // ============================================
 
@@ -119,7 +138,9 @@ excelFile.addEventListener("change", function(event) {
         return;
     }
 
+
     const lector = new FileReader();
+
 
     lector.onload = function(e) {
 
@@ -128,17 +149,21 @@ excelFile.addEventListener("change", function(event) {
             const datos =
                 new Uint8Array(e.target.result);
 
+
             const workbook =
                 XLSX.read(datos, {
                     type: "array",
                     cellDates: false
                 });
 
+
             const nombreHoja =
                 workbook.SheetNames[0];
 
+
             const hoja =
                 workbook.Sheets[nombreHoja];
+
 
             const datosExcel =
                 XLSX.utils.sheet_to_json(
@@ -148,6 +173,7 @@ excelFile.addEventListener("change", function(event) {
                         raw: false
                     }
                 );
+
 
             if (datosExcel.length === 0) {
 
@@ -159,11 +185,13 @@ excelFile.addEventListener("change", function(event) {
             }
 
 
+            // Buscar columna Medidor
             const columnaMedidor =
                 buscarColumna(
                     datosExcel[0],
                     "medidor"
                 );
+
 
             if (!columnaMedidor) {
 
@@ -175,12 +203,17 @@ excelFile.addEventListener("change", function(event) {
             }
 
 
+            // Buscar columna Secuencia
             const columnaSecuencia =
                 buscarColumna(
                     datosExcel[0],
                     "secuencia"
                 );
 
+
+            // ========================================
+            // CREAR RUTA
+            // ========================================
 
             ruta = datosExcel.map(
                 (fila, indice) => {
@@ -190,21 +223,24 @@ excelFile.addEventListener("change", function(event) {
                             fila[columnaMedidor]
                         );
 
+
                     const secuencia =
                         columnaSecuencia
                             ? fila[columnaSecuencia]
                             : indice + 1;
 
+
                     return {
 
-                        id: String(
-                            secuencia ||
-                            indice + 1
-                        ),
+                        // ID ÚNICO REAL
+                        id:
+                            crearIdRegistro(indice),
 
-                        fila: fila,
+                        fila:
+                            fila,
 
-                        medidor: medidor,
+                        medidor:
+                            medidor,
 
                         medidorBusqueda:
                             soloNumeros(medidor),
@@ -218,31 +254,51 @@ excelFile.addEventListener("change", function(event) {
             );
 
 
-            // Identificador de la ruta
+            // ========================================
+            // IDENTIFICADOR DE LA RUTA
+            // ========================================
+
             rutaKey =
                 "telemedicion_" +
                 archivoSeleccionado.name +
                 "_" +
                 archivoSeleccionado.size;
 
+
             nombreArchivoRuta =
                 archivoSeleccionado.name;
 
 
-            // Recuperar lecturas guardadas
-            cargarRespaldo();
+            // ========================================
+            // RECUPERAR LECTURAS DE ESTA RUTA
+            // ========================================
 
+            cargarLecturas();
+
+
+            // ========================================
+            // GUARDAR LA RUTA COMPLETA
+            // ========================================
+
+            guardarRutaCompleta();
+
+
+            // ========================================
+            // ACTUALIZAR INTERFAZ
+            // ========================================
 
             archivo.textContent =
                 "Ruta cargada: " +
-                archivoSeleccionado.name;
+                nombreArchivoRuta;
 
 
             buscar.value = "";
 
             resultados.innerHTML = "";
 
-            clienteCard.classList.add("oculto");
+            clienteCard.classList.add(
+                "oculto"
+            );
 
             medidorSeleccionado = null;
 
@@ -257,8 +313,7 @@ excelFile.addEventListener("change", function(event) {
                 "Registros: " +
                 ruta.length +
                 "\n\n" +
-                "Las lecturas guardadas anteriormente " +
-                "se conservarán."
+                "La ruta quedó guardada en el teléfono."
             );
 
 
@@ -283,47 +338,207 @@ excelFile.addEventListener("change", function(event) {
 
 
 // ============================================
-// CARGAR LECTURAS GUARDADAS
+// GUARDAR RUTA COMPLETA
 // ============================================
 
-function cargarRespaldo() {
+function guardarRutaCompleta() {
+
+    try {
+
+        const datosRuta = {
+
+            nombreArchivo:
+                nombreArchivoRuta,
+
+            rutaKey:
+                rutaKey,
+
+            ruta:
+                ruta,
+
+            lecturas:
+                lecturas,
+
+            fechaGuardado:
+                new Date()
+                    .toLocaleString("es-EC")
+
+        };
+
+
+        localStorage.setItem(
+            CLAVE_RUTA,
+            JSON.stringify(datosRuta)
+        );
+
+
+        return true;
+
+
+    } catch (error) {
+
+        console.error(
+            "Error guardando la ruta",
+            error
+        );
+
+
+        alert(
+            "⚠️ No se pudo guardar la ruta completa."
+        );
+
+
+        return false;
+
+    }
+
+}
+
+
+// ============================================
+// RECUPERAR RUTA AUTOMÁTICAMENTE
+// ============================================
+
+function recuperarRuta() {
+
+    try {
+
+        const datosGuardados =
+            localStorage.getItem(
+                CLAVE_RUTA
+            );
+
+
+        if (!datosGuardados) {
+
+            actualizarProgreso();
+
+            return;
+
+        }
+
+
+        const datos =
+            JSON.parse(
+                datosGuardados
+            );
+
+
+        if (
+            !datos.ruta ||
+            !Array.isArray(datos.ruta) ||
+            datos.ruta.length === 0
+        ) {
+
+            actualizarProgreso();
+
+            return;
+
+        }
+
+
+        ruta =
+            datos.ruta;
+
+
+        lecturas =
+            datos.lecturas || {};
+
+
+        rutaKey =
+            datos.rutaKey || "";
+
+
+        nombreArchivoRuta =
+            datos.nombreArchivo || "";
+
+
+        archivo.textContent =
+            "Ruta recuperada: " +
+            nombreArchivoRuta;
+
+
+        actualizarProgreso();
+
+
+        console.log(
+            "Ruta recuperada automáticamente:",
+            ruta.length,
+            "registros"
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Error recuperando ruta",
+            error
+        );
+
+
+        ruta = [];
+
+        lecturas = {};
+
+        actualizarProgreso();
+
+    }
+
+}
+
+
+// ============================================
+// CARGAR LECTURAS
+// ============================================
+
+function cargarLecturas() {
 
     lecturas = {};
+
 
     try {
 
         const principal =
-            localStorage.getItem(rutaKey);
+            localStorage.getItem(
+                rutaKey
+            );
+
 
         if (principal) {
 
             lecturas =
-                JSON.parse(principal);
+                JSON.parse(
+                    principal
+                );
 
         }
 
     } catch (error) {
 
         console.error(
-            "Error leyendo respaldo principal",
+            "Error leyendo lecturas",
             error
         );
 
     }
 
 
-    // Recuperar segunda copia
+    // Segunda copia
     try {
 
         const secundario =
             localStorage.getItem(
-                rutaKey + "_backup"
+                rutaKey +
+                "_backup"
             );
+
 
         if (secundario) {
 
             const respaldoGuardado =
-                JSON.parse(secundario);
+                JSON.parse(
+                    secundario
+                );
 
 
             Object.keys(
@@ -362,11 +577,16 @@ buscar.addEventListener(
     function() {
 
         const texto =
-            soloNumeros(buscar.value);
+            soloNumeros(
+                buscar.value
+            );
+
 
         resultados.innerHTML = "";
 
-        clienteCard.classList.add("oculto");
+        clienteCard.classList.add(
+            "oculto"
+        );
 
         medidorSeleccionado = null;
 
@@ -389,12 +609,15 @@ buscar.addEventListener(
 
 
         const encontrados =
-            ruta.filter(registro => {
+            ruta.filter(
+                registro => {
 
-                return registro.medidorBusqueda
-                    .includes(texto);
+                    return registro
+                        .medidorBusqueda
+                        .includes(texto);
 
-            });
+                }
+            );
 
 
         if (encontrados.length === 0) {
@@ -409,65 +632,73 @@ buscar.addEventListener(
         }
 
 
-        encontrados.forEach(registro => {
+        encontrados.forEach(
+            registro => {
 
-            const medicion =
-                lecturas[registro.id];
-
-            const div =
-                document.createElement("div");
-
-            div.className =
-                "resultado";
+                const medicion =
+                    lecturas[
+                        registro.id
+                    ];
 
 
-            let estado = "";
+                const div =
+                    document.createElement(
+                        "div"
+                    );
 
 
-            if (medicion) {
+                div.className =
+                    "resultado";
 
-                estado = `
-                    <div class="estado ya-medido">
-                        ✓ YA MEDIDO<br>
-                        Lectura:
-                        ${medicion.lectura}
-                    </div>
+
+                let estado = "";
+
+
+                if (medicion) {
+
+                    estado = `
+                        <div class="estado ya-medido">
+                            ✓ YA MEDIDO<br>
+                            Lectura:
+                            ${medicion.lectura}
+                        </div>
+                    `;
+
+                } else {
+
+                    estado = `
+                        <div class="estado pendiente">
+                            Pendiente de lectura
+                        </div>
+                    `;
+
+                }
+
+
+                div.innerHTML = `
+
+                    <strong>
+                        Medidor:
+                        ${registro.medidor}
+                    </strong>
+
+                    <small>
+                        Secuencia:
+                        ${registro.secuencia}
+                    </small>
+
+                    ${estado}
+
+                    <button>
+                        Seleccionar
+                    </button>
+
                 `;
 
-            } else {
 
-                estado = `
-                    <div class="estado pendiente">
-                        Pendiente de lectura
-                    </div>
-                `;
-
-            }
-
-
-            div.innerHTML = `
-
-                <strong>
-                    Medidor:
-                    ${registro.medidor}
-                </strong>
-
-                <small>
-                    Secuencia:
-                    ${registro.secuencia}
-                </small>
-
-                ${estado}
-
-                <button>
-                    Seleccionar
-                </button>
-
-            `;
-
-
-            div.querySelector("button")
-                .addEventListener(
+                div.querySelector(
+                    "button"
+                ).addEventListener(
                     "click",
                     function() {
 
@@ -479,9 +710,12 @@ buscar.addEventListener(
                 );
 
 
-            resultados.appendChild(div);
+                resultados.appendChild(
+                    div
+                );
 
-        });
+            }
+        );
 
     }
 );
@@ -491,14 +725,19 @@ buscar.addEventListener(
 // SELECCIONAR MEDIDOR
 // ============================================
 
-function seleccionarMedidor(registro) {
+function seleccionarMedidor(
+    registro
+) {
 
     medidorSeleccionado =
         registro;
 
+
     modoEdicion = false;
 
+
     resultados.innerHTML = "";
+
 
     clienteCard.classList.remove(
         "oculto"
@@ -519,7 +758,9 @@ function seleccionarMedidor(registro) {
 
 
     const medicion =
-        lecturas[registro.id];
+        lecturas[
+            registro.id
+        ];
 
 
     if (medicion) {
@@ -527,11 +768,15 @@ function seleccionarMedidor(registro) {
         lectura.value =
             medicion.lectura;
 
-        lectura.disabled = true;
+
+        lectura.disabled =
+            true;
+
 
         guardar.classList.add(
             "oculto"
         );
+
 
         editar.classList.remove(
             "oculto"
@@ -562,11 +807,14 @@ function seleccionarMedidor(registro) {
 
         lectura.value = "";
 
-        lectura.disabled = false;
+        lectura.disabled =
+            false;
+
 
         guardar.classList.remove(
             "oculto"
         );
+
 
         editar.classList.add(
             "oculto"
@@ -596,7 +844,7 @@ function seleccionarMedidor(registro) {
 
 
 // ============================================
-// EDITAR LECTURA
+// EDITAR
 // ============================================
 
 editar.addEventListener(
@@ -607,18 +855,25 @@ editar.addEventListener(
             return;
         }
 
+
         modoEdicion = true;
 
-        lectura.disabled = false;
+
+        lectura.disabled =
+            false;
+
 
         lectura.focus();
+
 
         guardar.classList.remove(
             "oculto"
         );
 
+
         guardar.textContent =
             "💾 Guardar cambio";
+
 
         editar.classList.add(
             "oculto"
@@ -686,13 +941,15 @@ guardar.addEventListener(
         }
 
 
+        const id =
+            medidorSeleccionado.id;
+
+
         const yaExistia =
-            lecturas[
-                medidorSeleccionado.id
-            ];
+            lecturas[id];
 
 
-        // No permitir sobrescritura accidental
+        // Evitar sobrescritura accidental
         if (
             yaExistia &&
             !modoEdicion
@@ -708,33 +965,44 @@ guardar.addEventListener(
         }
 
 
-        // Registrar lectura
-        lecturas[
-            medidorSeleccionado.id
-        ] = {
+        // ========================================
+        // GUARDAR LECTURA
+        // ========================================
 
-            lectura: valor,
+        lecturas[id] = {
+
+            lectura:
+                valor,
 
             fecha:
                 new Date()
-                .toLocaleString(
-                    "es-EC"
-                )
+                    .toLocaleString("es-EC")
 
         };
 
 
-        // GUARDADO AUTOMÁTICO
+        // ========================================
+        // GUARDADO INMEDIATO
+        // ========================================
+
         guardarDatos();
+
+
+        // Actualizar también la ruta completa
+        guardarRutaCompleta();
 
 
         modoEdicion = false;
 
-        lectura.disabled = true;
+
+        lectura.disabled =
+            true;
+
 
         guardar.classList.add(
             "oculto"
         );
+
 
         editar.classList.remove(
             "oculto"
@@ -776,7 +1044,7 @@ guardar.addEventListener(
 
 
 // ============================================
-// GUARDADO AUTOMÁTICO
+// GUARDAR LECTURAS EN DOS COPIAS
 // ============================================
 
 function guardarDatos() {
@@ -787,21 +1055,24 @@ function guardarDatos() {
 
 
     const datos =
-        JSON.stringify(lecturas);
+        JSON.stringify(
+            lecturas
+        );
 
 
     try {
 
-        // Primera copia
+        // Copia principal
         localStorage.setItem(
             rutaKey,
             datos
         );
 
 
-        // Segunda copia
+        // Copia secundaria
         localStorage.setItem(
-            rutaKey + "_backup",
+            rutaKey +
+            "_backup",
             datos
         );
 
@@ -812,14 +1083,14 @@ function guardarDatos() {
     } catch (error) {
 
         console.error(
-            "Error guardando datos",
+            "Error guardando lecturas",
             error
         );
 
 
         alert(
             "⚠️ No se pudo guardar la lectura.\n\n" +
-            "Cree un respaldo manual inmediatamente."
+            "Cree un respaldo manual."
         );
 
 
@@ -831,7 +1102,7 @@ function guardarDatos() {
 
 
 // ============================================
-// BOTÓN: CREAR RESPALDO MANUAL
+// CREAR RESPALDO MANUAL
 // ============================================
 
 respaldo.addEventListener(
@@ -849,38 +1120,42 @@ respaldo.addEventListener(
 
 
         const datosRespaldo =
-            ruta.map(registro => {
+            ruta.map(
+                registro => {
 
-                const medicion =
-                    lecturas[registro.id];
+                    const medicion =
+                        lecturas[
+                            registro.id
+                        ];
 
 
-                return {
+                    return {
 
-                    Secuencia:
-                        registro.secuencia,
+                        Secuencia:
+                            registro.secuencia,
 
-                    Medidor:
-                        registro.medidor,
+                        Medidor:
+                            registro.medidor,
 
-                    Lectura:
-                        medicion
-                            ? medicion.lectura
-                            : "",
+                        Lectura:
+                            medicion
+                                ? medicion.lectura
+                                : "",
 
-                    Estado:
-                        medicion
-                            ? "MEDIDO"
-                            : "PENDIENTE",
+                        Estado:
+                            medicion
+                                ? "MEDIDO"
+                                : "PENDIENTE",
 
-                    Fecha:
-                        medicion
-                            ? medicion.fecha
-                            : ""
+                        Fecha:
+                            medicion
+                                ? medicion.fecha
+                                : ""
 
-                };
+                    };
 
-            });
+                }
+            );
 
 
         const hoja =
@@ -906,11 +1181,17 @@ respaldo.addEventListener(
                 .slice(0, 10);
 
 
+        const nombreBase =
+            obtenerNombreSinExtension(
+                nombreArchivoRuta
+            );
+
+
         const nombre =
-            "RESPALDO_" +
+            nombreBase +
+            "_RESPALDO_" +
             fecha +
-            "_" +
-            nombreArchivoRuta;
+            ".xlsx";
 
 
         XLSX.writeFile(
@@ -920,7 +1201,9 @@ respaldo.addEventListener(
 
 
         alert(
-            "✓ Respaldo creado correctamente."
+            "✓ Respaldo creado correctamente.\n\n" +
+            "Registros: " +
+            ruta.length
         );
 
     }
@@ -946,38 +1229,49 @@ exportar.addEventListener(
 
 
         const datosExportar =
-            ruta.map(registro => {
+            ruta.map(
+                registro => {
 
-                const fila = {
-                    ...registro.fila
-                };
-
-
-                const medicion =
-                    lecturas[registro.id];
+                    // Copiar TODA la fila original
+                    const fila = {
+                        ...registro.fila
+                    };
 
 
-                fila["Lectura Registrada"] =
-                    medicion
-                        ? medicion.lectura
-                        : "";
+                    const medicion =
+                        lecturas[
+                            registro.id
+                        ];
 
 
-                fila["Estado"] =
-                    medicion
-                        ? "MEDIDO"
-                        : "PENDIENTE";
+                    fila[
+                        "Lectura Registrada"
+                    ] =
+                        medicion
+                            ? medicion.lectura
+                            : "";
 
 
-                fila["Fecha lectura"] =
-                    medicion
-                        ? medicion.fecha
-                        : "";
+                    fila[
+                        "Estado"
+                    ] =
+                        medicion
+                            ? "MEDIDO"
+                            : "PENDIENTE";
 
 
-                return fila;
+                    fila[
+                        "Fecha lectura"
+                    ] =
+                        medicion
+                            ? medicion.fecha
+                            : "";
 
-            });
+
+                    return fila;
+
+                }
+            );
 
 
         const hoja =
@@ -997,18 +1291,53 @@ exportar.addEventListener(
         );
 
 
+        // Nombre de la ruta
+        const nombreBase =
+            obtenerNombreSinExtension(
+                nombreArchivoRuta
+            );
+
+
+        const nombreFinal =
+            nombreBase +
+            "_FINAL.xlsx";
+
+
         XLSX.writeFile(
             libro,
-            "lecturas_telemedicion.xlsx"
+            nombreFinal
         );
 
 
         alert(
-            "✓ Excel final generado correctamente."
+            "✓ Excel final generado correctamente.\n\n" +
+            "Registros: " +
+            ruta.length
         );
 
     }
 );
+
+
+// ============================================
+// OBTENER NOMBRE SIN .XLSX
+// ============================================
+
+function obtenerNombreSinExtension(
+    nombre
+) {
+
+    if (!nombre) {
+        return "ruta";
+    }
+
+
+    return nombre.replace(
+        /\.(xlsx|xls)$/i,
+        ""
+    );
+
+}
 
 
 // ============================================
@@ -1023,14 +1352,16 @@ function actualizarProgreso() {
 
     const totalMedidos =
         Object.keys(lecturas)
-            .filter(id => {
+            .filter(
+                id => {
 
-                return ruta.some(
-                    registro =>
-                        registro.id === id
-                );
+                    return ruta.some(
+                        registro =>
+                            registro.id === id
+                    );
 
-            })
+                }
+            )
             .length;
 
 
@@ -1042,14 +1373,17 @@ function actualizarProgreso() {
     total.textContent =
         totalRegistros;
 
+
     medidos.textContent =
         totalMedidos;
+
 
     pendientes.textContent =
         totalPendientes;
 
 
-    let porcentajeActual = 0;
+    let porcentajeActual =
+        0;
 
 
     if (totalRegistros > 0) {
@@ -1075,11 +1409,6 @@ function actualizarProgreso() {
 
 
 // ============================================
-// INICIO
-// ============================================
-
-actualizarProgreso();
-// ============================================
 // ACTIVAR MODO OFFLINE
 // ============================================
 
@@ -1091,23 +1420,34 @@ if ("serviceWorker" in navigator) {
 
             navigator.serviceWorker
                 .register("./sw.js")
-                .then(function() {
+                .then(
+                    function() {
 
-                    console.log(
-                        "Telemedición EEQ: modo offline activado."
-                    );
+                        console.log(
+                            "Modo offline activado."
+                        );
 
-                })
-                .catch(function(error) {
+                    }
+                )
+                .catch(
+                    function(error) {
 
-                    console.error(
-                        "Error activando modo offline:",
-                        error
-                    );
+                        console.error(
+                            "Error activando modo offline:",
+                            error
+                        );
 
-                });
+                    }
+                );
 
         }
     );
 
 }
+
+
+// ============================================
+// RECUPERAR RUTA AL ABRIR LA APLICACIÓN
+// ============================================
+
+recuperarRuta();
